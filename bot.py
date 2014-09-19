@@ -52,6 +52,7 @@ parser.add_argument("-g", "--generousfile", nargs='?', default=".generous")
 parser.add_argument("-q", "--quotefile", nargs='?', default=".quotes")
 parser.add_argument("-u", "--userfile", nargs='?', default=".users")
 parser.add_argument("-m", "--modfile", nargs='?', default=".mods")
+parser.add_argument("-e", "--emotefile", nargs='?', default=".emotes")
 parser.add_argument("-keyfile", nargs='?', default=".key")
 parser.add_argument("-t", "--tls", action="store_true", default=False)
 parser.add_argument("--password", nargs='?')
@@ -61,6 +62,7 @@ readbuffer = ""
 currentusers = []
 mods = []
 quotes = []
+emotes = []
 shared_source = False
 alias = True
 <<<<<<< HEAD
@@ -98,7 +100,9 @@ with open(args.keyfile) as f:
     for line in f:
         googlekey = line
 
-print googlekey
+with open(args.emotefile) as f:
+    for line in f:
+        emotes.append(line[:-1])
 
 # connect to the server
 s = socket.socket()
@@ -319,7 +323,7 @@ def roll(num):
     try:
         num = int(num)
     except ValueError:
-        return num + " is not a number"
+        return num + " is not an integer"
 
     if num <= 0:
         return "You roll an imaginary die, which lands on an imaginary number"
@@ -331,6 +335,9 @@ def roll(num):
         return "You rolled a natural 1 :("
     else:
         return "You rolled a " + str(randnum)
+
+def emote():
+    return unicode(random.choice(emotes), 'utf-8')
 
 def specificQuote(num):
     n = int(num) - 1
@@ -585,6 +592,9 @@ def computeResponse(sender, message, channel):
             return roll(spltmsg[1])
         else:
             return roll("20")
+
+    elif func == ".emote":
+        return emote()
 
     elif func == ".quote":
         return quoteMessage(sender, message[6:])
