@@ -449,6 +449,8 @@ def computeResponse(sender, message, channel):
             setGenerosity(sender, netgain)
             return "%s has %i karma" % (subject, getPoints(subject))
         else:
+            if message.lstrip().lower() == 'other m' and netgain == 1:
+                return "No."
             setPoints(message.lstrip(), netgain)
             return "\"%s\" has %i point%s" % (message, getPoints(message), ["s", ""][getPoints(message)==1])
 
