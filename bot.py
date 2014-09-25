@@ -53,6 +53,7 @@ parser.add_argument("-q", "--quotefile", nargs='?', default=".quotes")
 parser.add_argument("-u", "--userfile", nargs='?', default=".users")
 parser.add_argument("-m", "--modfile", nargs='?', default=".mods")
 parser.add_argument("-e", "--emotefile", nargs='?', default=".emotes")
+parser.add_argument("--aliasfile", nargs='?', default=".alias")
 parser.add_argument("-keyfile", nargs='?', default=".key")
 parser.add_argument("-t", "--tls", action="store_true", default=False)
 parser.add_argument("--password", nargs='?')
@@ -65,11 +66,9 @@ quotes = []
 emotes = []
 shared_source = False
 alias = True
-<<<<<<< HEAD
 silentMode = False
-=======
+aliasconfirm = {}
 googlekey = ''
->>>>>>> Updated pattern search function to use private key
 
 # Utter Stupidity
 otherm = [
@@ -96,6 +95,7 @@ karmaScores = loadData(args.karmafile)
 stats = loadData(args.statsfile)
 generous = loadData(args.generousfile)
 scrambleTracker = loadData(args.scramblefile)
+aliases = loadData(args.aliasfile)
 
 with open(args.quotefile) as f:
     for line in f:
@@ -165,13 +165,10 @@ s.send(bytes("JOIN %s\r\n" % args.channel))
 
 # returns the sender
 def parseSender(line):
-    global alias
     sender = line[0][1:line[0].find("!")]
-    if alias:
-        sender = sender.split('-')[0]
-        sender = sender.split('|')[0]
-    return sender
-
+    aliased = alias(sender.split('-')[0])
+    return (aliased, sender)
+                   
 # returns the channel
 def parseChannel(line):
     return line[2]
@@ -183,6 +180,19 @@ def sendTo(destination, message):
 # returns the message
 def parseMessage(line):
     return " ".join(line[3:])[1:].rstrip().lstrip()
+
+# Get alias for subject name
+def alias(subject):
+    global aliases
+    if True:
+        subject = subject.split('-')[0]
+        subject = subject.split('|')[0]
+        try:
+            if aliases[subject] != None:
+                subject = aliases[subject]
+        except KeyError:
+            pass 
+    return subject
 
 # set the score for the given subject and write it to disk
 def setPoints(subject, pts):
@@ -300,12 +310,10 @@ def anonDo(message):
 def updateBamboo():
     exit(0)
 
-<<<<<<< HEAD
 #Put Chipbot in and out of silent mode
 def sleepBamboo():
 	silentMode = !silentMode
 
-=======
 def searchGoogle(searchTerm, searchUrl):
     global googlekey
     g = Google(license=googlekey)
@@ -316,8 +324,6 @@ def searchGoogle(searchTerm, searchUrl):
     for result in results:
         if searchUrl in result.url:
             return result.title + ' ' + result.url
-        
->>>>>>> Updated pattern search function to use private key
 def xkcd(searchTerm):
     return searchGoogle("xkcd"+searchTerm, "http://xkcd.com/")
 
@@ -359,7 +365,48 @@ def specificQuote(num):
 
 def randomQuote():
     return quotes[random.randint(0, len(quotes)-1)]
+                   
+def addalias(sender, realalias):
+    if realalias == '':
+        return "Error: need to specify alias nick"
+    global aliasconfirm
 
+    subject = alias(sender)
+
+    if subject == realalias:
+        return "Tryin' to pull a fast one on me, eh? Use .resetalias on your alias if you messed up"
+
+    aliasconfirm[realalias] = subject
+    confirmstr = realalias + " will resolve to " + subject + ". Confirm by logging into alias and "
+    confirmstr += "using '.confirmalias " + subject + "'"
+    return confirmstr
+
+def confirmalias(sender, realalias):
+    if realalias == '':
+        return "Error: need to specify original nick"
+    global aliasconfirm
+    global aliases
+
+    if sender == realalias:
+        return "This alias already resolves to " + realalias + "."
+
+    try:
+        if aliasconfirm[sender] == realalias:
+            aliases[sender] = realalias
+            with open(args.aliasfile, 'wb') as file:
+                pickle.dump(aliases, file)
+            return sender + " now resolves to " + realalias
+    except KeyError:
+        return "Alias is not ready to confirm. Use .addalias when logged into your main nick"
+
+def resetalias(sender):
+    global aliases
+    
+    aliases[sender] = None
+    with open(args.aliasfile, 'wb') as file:
+            pickle.dump(aliases, file)
+    return sender + " now resolves to " + sender 
+    
 """
 def parseURL(url):
     br = Browser()
@@ -373,7 +420,7 @@ def parseURL(url):
 """
 
 # returns the response given a sender, message, and channel
-def computeResponse(sender, message, channel):
+def computeResponse(sender, message, channel, ogsender=None):
     global args
 	
 	if napping and sender not in mods:
@@ -424,10 +471,7 @@ def computeResponse(sender, message, channel):
         else:
             subject = "" 
 
-        global alias
-        if alias:
-            subject = subject.split('-')[0]
-            subject = subject.split('|')[0] 
+        subject = alias(subject)
 
         if symbol == "``":
             usrstats = getStats(subject)
@@ -478,9 +522,8 @@ def computeResponse(sender, message, channel):
     elif func == "rank":
         if len(splitmsg) == 2:
             subject = splitmsg[1].lstrip()
-            if alias:
-                subject = subject.split('-')[0]
-                subject = subject.split('|')[0]
+            subject = alias(subject)
+                
             return computeResponse(sender, subject+"~~", channel)
 
     # report the top 5 users and phrases
@@ -505,9 +548,7 @@ def computeResponse(sender, message, channel):
     elif func == "stats":
         if len(splitmsg) == 2:
             subject = splitmsg[1].lstrip()
-            if alias:
-                subject = subject.split('-')[0]
-                subject = subject.split('|')[0]
+            subject = alias(subject)
             return computeResponse(sender, subject+"``", channel)
         elif len(splitmsg) == 1:
             top_users = "Top 5 Users by Volume:"
@@ -523,9 +564,7 @@ def computeResponse(sender, message, channel):
     elif func == "generosity":
         if len(splitmsg) == 2:
             subject = splitmsg[1].lstrip()
-            if alias:
-                subject = subject.split('-')[0]
-                subject = subject.split('|')[0]
+            subject = alias(subject)
             return computeResponse(sender, subject+"$$", channel)
         elif len(splitmsg) == 1:
             most_generous = "Top 5 Most Generous Users:"
@@ -548,9 +587,7 @@ def computeResponse(sender, message, channel):
     elif func == "quality":
         if len(splitmsg) == 2:
             subject = splitmsg[1].lstrip()
-            if alias:
-                subject = subject.split('-')[0]
-                subject = subject.split('|')[0]
+            subject = alias(subject)
             return computeResponse(sender, subject+"**", channel)
         if len(splitmsg) == 1:
             top_users = "Top 5 Users by Quality:"
@@ -641,6 +678,15 @@ def computeResponse(sender, message, channel):
         toggleScrambles(sender.lower())
         return sender.lower() + " is now known as %s%s" % scramble((sender.lower(),""))
 
+    elif func == ".addalias":
+        return addalias(sender, message[10:])
+
+    elif func == ".confirmalias":
+        return confirmalias(sender, message[14:])
+
+    elif func == ".resetalias":
+        return resetalias(ogsender)
+
 """
     elif re.findall('.*\.com', message)!= []:
         url = "http://www." + re.findall('.*\.com[^ ]*', message)[0]
@@ -675,9 +721,7 @@ while 1:
                 u = u.lstrip("@").lstrip(":").lower()
                 if u[0] == "+":
                     u = u[1:]
-                if alias:
-                    u = u.split('-')[0]
-                    u = u.split('|')[0]
+                u = alias(u)
                 if not u in currentusers:
                     currentusers.append(u)
                     with open(args.userfile, 'a') as f:
@@ -689,9 +733,7 @@ while 1:
                 u = line[2].lstrip("@").lstrip(":").lower()
                 if u[0] == "+":
                     u = u[1:] 
-                if alias:
-                    u = u.split('-')[0]
-                    u = u.split('|')[0]
+                u = alias(u) 
                 if not u in currentusers:
                     currentusers.append(u)
                     with open(args.userfile, 'a') as f:
@@ -701,9 +743,9 @@ while 1:
 
         # update list of users currently online when new one joins
         elif line[1] == "JOIN":
-            sender = parseSender(line)
+            sender, ogsender = parseSender(line)
             if not sender in currentusers:
-                u = parseSender(line).lstrip("@").lstrip(":").lower()
+                u, ogsender = parseSender(line).lstrip("@").lstrip(":").lower()
                 if not u in currentusers:
                     currentusers.append(u)
                     with open(args.userfile, 'a') as f:
@@ -714,7 +756,7 @@ while 1:
         elif line[1] == "PRIVMSG":
             
             # parse the information from the message
-            sender = parseSender(line)
+            sender, ogsender = parseSender(line)
             message = parseMessage(line)
             channel = parseChannel(line)
             
@@ -755,7 +797,7 @@ while 1:
                 continue
             
             # decide what type of response to have based on the message
-            response = computeResponse(sender, message, channel)
+            response = computeResponse(sender, message, channel, ogsender)
 
             # send the response to the channel, unless it's nothing
             if response:
