@@ -533,17 +533,12 @@ def computeResponse(sender, message, channel, ogsender=None):
     elif message[:2] in ["++", "--"]:
         return computeResponse(sender, message[2:]+message[:2], channel)
 
-
-    # display a rank for the given username
-    elif func == "rank":
+    # report the top 5 users and phrases
+    elif func == ".ranks" or func == ".scores":
         if len(splitmsg) == 2:
             subject = splitmsg[1].lstrip()
             subject = alias(subject)
-                
             return computeResponse(sender, subject+"~~", channel)
-
-    # report the top 5 users and phrases
-    elif func == "ranks" or func == "scores":
         if len(splitmsg) == 1:
             top_users = "Top 5 Users:"
             top_phrases = "Top 5 Phrases:"
@@ -561,7 +556,7 @@ def computeResponse(sender, message, channel, ogsender=None):
 
             return [top_users[:-1], top_phrases[:-1]]
 
-    elif func == "stats":
+    elif func == ".stats":
         if len(splitmsg) == 2:
             subject = splitmsg[1].lstrip()
             subject = alias(subject)
@@ -577,7 +572,7 @@ def computeResponse(sender, message, channel, ogsender=None):
                     count_users += 1
             return top_users[:-1]
 
-    elif func == "generosity":
+    elif func == ".generosity":
         if len(splitmsg) == 2:
             subject = splitmsg[1].lstrip()
             subject = alias(subject)
@@ -600,7 +595,7 @@ def computeResponse(sender, message, channel, ogsender=None):
                     count_sting += 1
             return [most_generous[:-1], most_stingy[:-1]]
 
-    elif func == "quality":
+    elif func == ".quality":
         if len(splitmsg) == 2:
             subject = splitmsg[1].lstrip()
             subject = alias(subject)
@@ -631,6 +626,8 @@ def computeResponse(sender, message, channel, ogsender=None):
                     spam_users += " %s=%.2f%%," % scramble(tup)
                     count_users += 1
             return [top_users[:-1], spam_users[:-1]]
+
+    # FUNctions
 
     elif func == ".xkcd":
         return xkcd(message[5:])
@@ -718,6 +715,7 @@ def computeResponse(sender, message, channel, ogsender=None):
             return
         return parseURL(url)
 
+
 while 1:
     # read in lines from the socket
     readbuffer = readbuffer+s.recv(1024).decode("UTF-8")
@@ -786,7 +784,7 @@ while 1:
             message = parseMessage(line)
             channel = parseChannel(line)
             
-            # if not on the channel, tell the user you're a bot
+            # privmsg interactions
             if channel != args.channel:
                 modflag = False
                 splitmsg =message.split(' ')
@@ -817,7 +815,8 @@ while 1:
                     
                 elif func == "quote" and arglist !=[]:
                     quoteMessage(sender, ' '.join(arglist))
-                    
+
+                # if not on the channel, tell the user you're a bot                    
                 else:
                     politelyDoNotEngage(sender)
                 continue
