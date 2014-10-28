@@ -35,10 +35,11 @@ import re
 import time
 import random
 import mechanize 
+from dfrotz_irc import FrotzParser
 from BeautifulSoup import BeautifulSoup
 
 parser = argparse.ArgumentParser(description="Bamboo argument parsing")
-parser.add_argument("-s", "--server", nargs='?', default="warden.esper.net")
+parser.add_argument("-s", "--server", nargs='?', default="irc.na.esper.net")
 parser.add_argument("-p", "--port", nargs='?', default=6667, type=int)
 parser.add_argument("-n", "--nick", nargs='?', default="chipbot")
 parser.add_argument("-i", "--ident", nargs='?', default="chipbot")
@@ -162,6 +163,10 @@ if args.password:
     s.send(bytes("PRIVMSG NickServ : identify %s\r\n" % args.password))
 time.sleep(5)
 s.send(bytes("JOIN %s\r\n" % args.channel))
+
+# Set up Zork
+zorkInstance = FrotzParser()
+zorkInstance.read_z()
 
 # returns the sender
 def parseSender(line):
@@ -324,6 +329,18 @@ def searchGoogle(searchTerm, searchUrl):
     for result in results:
         if searchUrl in result.url:
             return result.title + ' ' + result.url
+
+def zorkparse(command):
+    global zorkInstance
+    zorkInstance.write_z(command)
+    output = zorkInstance.read_z()
+    lines = output.split('\n')
+    for line in lines:
+        if line == "":
+            continue
+        sendTo(args.channel, line)
+        
+>>>>>>> Created Zork irc parser
 def xkcd(searchTerm):
     return searchGoogle("xkcd"+searchTerm, "http://xkcd.com/")
 
@@ -626,6 +643,13 @@ def computeResponse(sender, message, channel, ogsender=None):
                     spam_users += " %s=%.2f%%," % scramble(tup)
                     count_users += 1
             return [top_users[:-1], spam_users[:-1]]
+
+    elif func == ".zork":
+        if len(splitmsg) > 1:
+            return zorkparse(message[6:])
+        else:
+            print "returning look"
+            return zorkparse('look')
 
     # FUNctions
 
