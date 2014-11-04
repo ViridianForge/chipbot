@@ -353,6 +353,9 @@ def bandcamp(searchTerm):
 def soundcloud(searchTerm):
     return searchGoogle("soundcloud"+searchTerm,"soundcloud.com")
 
+def wikipedia(searchTerm):
+    return searchGoogle("wikipedia"+searchTerm,"wikipedia.com")
+
 def roll(num):
     if num[0].lower() == 'd':
         num = num[1:]
@@ -664,6 +667,9 @@ def computeResponse(sender, message, channel, ogsender=None):
         
     elif func == ".sc":
         return soundcloud(message[3:]) 
+    
+    elif func == ".wi":
+        return wikipedia(message[3:])
 
     elif func == ".meow":
         return "https://soundcloud.com/anamanaguchi/meow-1"
@@ -682,6 +688,9 @@ def computeResponse(sender, message, channel, ogsender=None):
 
     elif func == ".unflip":
         return unicode("┬──┬ ノ( ゜-゜ノ)", 'utf-8')
+
+    elif func == ".reflip":
+        return unicode("┻━┻ノ( ゜-゜ノ)", 'utf-8')
 
     elif func == ".flipharder":
         return unicode("(ノಠ益ಠ)ノ彡┻━┻", 'utf-8')
