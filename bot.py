@@ -508,8 +508,9 @@ def parseURL(url):
 def computeResponse(sender, message, channel, ogsender=None):
     global args
 	
-	if napping and sender not in mods:
+	if silentMode and sender not in mods:
 		return
+	
     splitmsg = message.split(' ')
     func = splitmsg[0]
 
@@ -723,8 +724,8 @@ def computeResponse(sender, message, channel, ogsender=None):
     elif func == ".map":
         return "http://chiptuneswin.com/map"
 
-    elif func == ".chipchart" or func == ".chart":
-        return "http://chiptuneswin.com/chipchart"
+    elif func == ".chipchart" or func == ".chart" or func == ".index" or func == ".chipwindex":
+        return "http://chiptuneswin.com/index"
 
     elif func == ".meow":
         return "https://soundcloud.com/anamanaguchi/meow-1"
