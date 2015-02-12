@@ -60,7 +60,7 @@ mods = []
 quotes = []
 shared_source = False
 alias = True
-napping = False
+silentMode = False
 
 def loadData(object):
     try:
@@ -264,10 +264,10 @@ def anonDo(message):
 # depends on git pull in shell while loop
 def updateBamboo():
     exit(0)
-	
+
+#Put Chipbot in and out of silent mode
 def sleepBamboo():
-	#Do something here so Chipbot chills out for some time
-	napping = True
+	silentMode = !silentMode
 
 def xkcd(searchTerm):
     if searchTerm != "":
@@ -308,6 +308,9 @@ def randomQuote():
 # returns the response given a sender, message, and channel
 def computeResponse(sender, message, channel):
     global args
+	
+	if napping and sender not in mods:
+		return
     splitmsg = message.split(' ')
     func = splitmsg[0]
 
