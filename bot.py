@@ -84,6 +84,9 @@ otherm = [
 "THEM'S FIGHTIN' WORDS."
 ]
 
+alias = True
+napping = False
+
 def loadData(object):
     try:
         with open(object, 'rb') as file:
@@ -336,6 +339,10 @@ def anonDo(message):
 # depends on git pull in shell while loop
 def updateBamboo():
     exit(0)
+	
+def sleepBamboo():
+	#Do something here so Chipbot chills out for some time
+	napping = True
 
 #Put Chipbot in and out of silent mode
 def sleepBamboo():
