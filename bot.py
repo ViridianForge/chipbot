@@ -339,7 +339,7 @@ def updateBamboo():
 	
 #Put Chipbot in and out of silent mode
 def sleepBamboo():
-	silentMode = !silentMode
+	silentMode = not silentMode
 
 def searchGoogle(searchTerm, searchUrl):
     global googlekey
