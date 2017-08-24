@@ -3,9 +3,9 @@
 
 """
 
-    Bamboo is an IRC karma-tracking bot
+    Chipbot is a fork of Bamboo, aan IRC karma-tracking bot
 
-    Copyright (C) 2014 Red Hat Westford Interns
+    Which is Copyright (C) 2014 Red Hat Westford Interns
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -27,6 +27,7 @@ import operator
 import pickle
 import socket
 import string
+import json
 import sys
 import random
 import ssl
@@ -66,8 +67,6 @@ mods = []
 quotes = []
 emotes = []
 shared_source = False
-alias = True
-silentMode = False
 aliasconfirm = {}
 googlekey = ''
 
@@ -83,6 +82,9 @@ otherm = [
 "Does not compute.",
 "THEM'S FIGHTIN' WORDS."
 ]
+
+#alias = True
+silentMode = False
 
 def loadData(object):
     try:
@@ -115,25 +117,11 @@ currentusers = loadStrings(args.userfile)
 mods = loadStrings(args.modfile)
 emotes = loadStrings(args.emotefile)
 
-
-#with open(args.quotefile) as f:
-#    for line in f:
-#        quotes.append(line)
- 
-#with open(args.userfile) as f:
-#    for line in f:
-#        currentusers.append(line[:-1])
-
-#with open(args.modfile) as f:
-#    for line in f:
-#        mods.append(line[:-1]) 
-
 try:
     with open(args.keyfile) as f:
         for line in f:
             googlekey = line
 except IOError:
-    open(filename, "w+")
     googlekey = ""
 
 #with open(args.emotefile) as f:
@@ -150,6 +138,11 @@ s.connect((args.server, args.port))
 
 s.send(bytes("NICK %s\r\n" % args.nick))
 s.send(bytes("USER %s %s bla :%s\r\n" % (args.ident, args.server, args.realname)))
+
+print args.nick
+print args.ident
+print args.server
+print args.realname
 
 brkflg = 0
 timeout_start = time.time()
@@ -185,10 +178,6 @@ if args.password:
     s.send(bytes("PRIVMSG NickServ : identify %s\r\n" % args.password))
 time.sleep(5)
 s.send(bytes("JOIN %s\r\n" % args.channel))
-
-# Set up Zork
-zorkInstance = FrotzParser()
-zorkInstance.read_z()
 
 # returns the sender
 def parseSender(line):
@@ -337,32 +326,32 @@ def anonDo(message):
 def updateBamboo():
     exit(0)
 	
-#Put Chipbot in and out of silent mode
-def sleepBamboo():
-	silentMode = not silentMode
+def silenceBamboo():
+    global silentMode
+    silentMode = not silentMode
+    if silentMode:
+        return "Running in silent mode!"
+    else:
+        return "Silent mode deactivated"
 
 def searchGoogle(searchTerm, searchUrl):
     global googlekey
-    g = Google(license=googlekey)
+    g = Google(license='')
     try: 
         results = g.search(searchTerm, cached=False)
-    except pattern.web.HTTP403Forbidden:
+    except HTTP403Forbidden as e:
+        print e.args
         return "Quota of searches exceeded for the day!"
+    except HTTP400BadRequest as e:
+        print type(e)
+        print e.args
+        print e
+        return "Huh. Search is malformed."
     for result in results:
+        print "Did we get a result?"
         if searchUrl in result.url:
             return result.title + ' ' + result.url
 
-def zorkparse(command):
-    global zorkInstance
-    zorkInstance.write_z(command)
-    output = zorkInstance.read_z()
-    lines = output.split('\n')
-    for line in lines:
-        if line == "":
-            continue
-        sendTo(args.channel, line)
-        
->>>>>>> Created Zork irc parser
 def xkcd(searchTerm):
     return searchGoogle("xkcd"+searchTerm, "http://xkcd.com/")
 
@@ -483,33 +472,68 @@ def resetalias(sender, realalias=None):
     
 
 def parseURL(url):
+    print url
+    br = mechanize.Browser()
+    try:
+        res = br.open(url)
+        data = res.get_data()
+    except (UnicodeEncodeError, mechanize._mechanize.BrowserStateError, urllib2.URLError) as e:
+        print "Failed at opening URL. \n URL was: " + url
+	return
+    except UnicodeDecodeError:
+        print "Failed at opening URL due to Encoding Reasons. \n URL was: " + url
+        return
+    try:
+        soup = BeautifulSoup(data)
+    except UnicodeEncodeError:
+	print "Failed at soupification. \n Data was: " + data
+        return
+    title = soup.find('title')
+    
+    if title is None:
+        return
+    else:
+        return title.renderContents().decode('utf-8')
+
+# returns text from radio output
+def getRadioInfo(url):
     br = mechanize.Browser()
     try:
         res = br.open(url)
         data = res.get_data()
     except (UnicodeEncodeError, mechanize._mechanize.BrowserStateError, urllib2.URLError) as e:
         return
-    try:
-        soup = BeautifulSoup(data)
-    except UnicodeEncodeError:
+    if data is None:
+	print "Empty data?"
         return
-    title = soup.find('title')
-
-    return title.renderContents().decode('utf-8')
+    else:
+	soup = BeautifulSoup(data)
+	iceStats = json.loads(data)
+	if iceStats is None:
+		print "Nada found."
+	else:
+        	return "Now playing on geekbeatradio: " + iceStats["icestats"]["source"]["title"]
+    
 
 # returns the response given a sender, message, and channel
 def computeResponse(sender, message, channel, ogsender=None):
     global args
-	
-	if silentMode and sender not in mods:
-		return
-	
+    
+    #Strip off any pre-pended data from bridge communications.
+    if re.match('.+<.+\#\d+>.+', message) is not None:
+      print 'Match triggered.'
+      message = message.split(' ',1)[1]
+
     splitmsg = message.split(' ')
+    
     func = splitmsg[0]
 
     if sender:
         setStats(sender)
 
+    if silentMode and sender not in mods:
+        return
+    
     output = []
     messages = []
 
@@ -586,7 +610,10 @@ def computeResponse(sender, message, channel, ogsender=None):
             return "%s has %i karma" % (subject, getPoints(subject))
         else:
             # Utter stupidity here (other m sucks)
-            if message.lstrip().lower() == 'other m' and netgain == 1:
+            #if (message.lstrip().lower() == 'other m' or message.lstrip().lower() == 'metroid: other m') \
+            #    and netgain == 1:
+            if (message.lower().find('other m') > -1 or message.lower().find('metroid: other m') > -1) and netgain == 1:
+		print message.lower() + " Calling Other M function."
                 global otherm
                 return random.choice(otherm)
             setPoints(message.lstrip(), netgain)
@@ -690,19 +717,13 @@ def computeResponse(sender, message, channel, ogsender=None):
                     count_users += 1
             return [top_users[:-1], spam_users[:-1]]
 
-    elif func == ".zork":
-        if len(splitmsg) > 1:
-            return zorkparse(message[6:])
-        else:
-            print "returning look"
-            return zorkparse('look')
-
     # FUNctions
 
     elif func == ".xkcd":
         return xkcd(message[5:])
 
     elif func == ".yt":
+        print message
         return youtube(message[3:])
 
     elif func == ".bc":
@@ -720,6 +741,10 @@ def computeResponse(sender, message, channel, ogsender=None):
     elif func == ".chipchart" or func == ".chart" or func == ".index" or func == ".chipwindex":
         return "http://chiptuneswin.com/index"
 
+    elif func == ".gbr" or func == ".geekbeatradio":
+	print ".gbr Matched."
+        return getRadioInfo('http://208.113.129.170:8000/status-json.xsl')
+
     elif func == ".meow":
         return "https://soundcloud.com/anamanaguchi/meow-1"
 
@@ -731,6 +756,12 @@ def computeResponse(sender, message, channel, ogsender=None):
 
     elif func == ".slam":
         return "comeonandsl.am"
+
+    elif func == ".csi":
+        return "instantcsi.com"
+
+    elif func == ".jdi":
+        return "https://www.youtube.com/watch?v=24CPil1scVg"
 
     elif func == ".flip":
         return unicode("(╯°□°）╯︵ ┻━┻", 'utf-8')
@@ -749,6 +780,15 @@ def computeResponse(sender, message, channel, ogsender=None):
 
     elif func == ".doubleflip":
         return unicode("┻━┻ ︵ヽ(`Д´)ﾉ︵ ┻━┻", 'utf-8')
+
+    elif func == ".nofucks":
+        return unicode("ᕕ(ᐛ)ᕗ", "utf-8")
+
+    elif func == ".shruggie":
+        return unicode("¯\_(ツ)_/¯", "utf-8")
+
+    elif func == ".fiteme":
+        return unicode("ᕙ( •̀ ︿•́ )ᕗ", "utf-8")
 
     elif func == ".roll":
         spltmsg = message.split(' ')
@@ -789,8 +829,11 @@ def computeResponse(sender, message, channel, ogsender=None):
         return resetalias(ogsender)
 
     elif re.findall('htt.*\.com', message)!= []:
-        url = re.findall('htt.*\.com[^ ]*[^ ]', message)[0]
-        url.decode('utf-8')
+        try:
+            url = re.findall('htt.*\.com[^ ]*[^ ]', message)[0]
+        except IndexError:
+            return
+        url.decode('utf-8').strip()
 
         # Problem with gifs, hacky fix for now
         if url[-4:] == ".gif":
@@ -873,6 +916,18 @@ while 1:
                 func = splitmsg[0]
                 arglist = splitmsg[1:]
                 
+            # parse the information from the message
+            sender, ogsender = parseSender(line)
+            message = parseMessage(line)
+            channel = parseChannel(line)
+            
+            # privmsg interactions
+            if channel != args.channel:
+                modflag = False
+                splitmsg =message.split(' ')
+                func = splitmsg[0]
+                arglist = splitmsg[1:]
+                
                 
                 if sender in mods:
                     modflag = True
@@ -880,9 +935,10 @@ while 1:
                 if func == "update" and modflag:
                     updateBamboo()        
 					
-                if func == "sleep" and modflag:
-                    sleepBamboo()
-           
+                if func == "silent" and modflag:
+                    msg = silenceBamboo()
+                    anonSay(msg)
+
                 elif func == "say" and modflag and arglist != []:
                     anonSay(' '.join(arglist))
 
