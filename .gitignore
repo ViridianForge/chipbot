@@ -1,0 +1,11 @@
+.emotes
+.karmascores
+.mods
+.quotes
+.stats
+.users
+dfrotz_irc.pyc
+*.sh
+/bin/*
+/lib/*
+/include/*
