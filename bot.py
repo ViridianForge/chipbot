@@ -742,8 +742,10 @@ def computeResponse(sender, message, channel, ogsender=None):
         return "http://chiptuneswin.com/index"
 
     elif func == ".gbr" or func == ".geekbeatradio":
-	print ".gbr Matched."
         return getRadioInfo('http://208.113.129.170:8000/status-json.xsl')
+
+    elif func == ".fab" or func == ".fabinternational":
+        return getRadioInfo('http://184.154.43.106:8021/status-json.xsl')
 
     elif func == ".meow":
         return "https://soundcloud.com/anamanaguchi/meow-1"
