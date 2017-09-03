@@ -496,7 +496,9 @@ def parseURL(url):
         return title.renderContents().decode('utf-8')
 
 # returns text from radio output
-def getRadioInfo(url):
+#Grabs Icecast JSON-Status xsl data, and looks for the title
+#of the currently playing track of the passed station.
+def getRadioInfo(station_name, url):
     br = mechanize.Browser()
     try:
         res = br.open(url)
@@ -504,16 +506,38 @@ def getRadioInfo(url):
     except (UnicodeEncodeError, mechanize._mechanize.BrowserStateError, urllib2.URLError) as e:
         return
     if data is None:
-	print "Empty data?"
         return
     else:
 	soup = BeautifulSoup(data)
 	iceStats = json.loads(data)
 	if iceStats is None:
-		print "Nada found."
+                return 'Apologies - ' + station + ' appears to be suffering from technical difficulties.'
 	else:
-        	return "Now playing on geekbeatradio: " + iceStats["icestats"]["source"]["title"]
-    
+                nowPlaying = ''
+
+                #Check to see if the station has multiple mount points
+                if isinstance(iceStats['icestats']['source'], list):
+                    #Grab the currently playing track from the passed station
+                    for station in iceStats['icestats']['source']:
+                        if station['server_name'] == station:
+                            if 'title' in station: 
+                                nowPlaying = station['title']
+                            else:
+                                nowPlaying = 'Nothing at the moment.'
+                    
+                    #If the station wasn't found, grab the first mount point
+                    if nowPlaying == '':
+                        if 'title' in iceStats['icestats']['source'][0]:
+                            nowPlaying = iceStats['icestats']['source'][0]['title']
+                        else:
+                            nowPlaying = 'Nothing at the moment.'
+                else:
+                    if 'title' in iceStats['icestats']['source']:
+                        nowPlaying = iceStats['icestats']['source']['title']
+                    else:
+                        nowPlaying = 'Nothing at the moment.'
+                
+                return 'Now playing on ' + station_name + ' -- ' + nowPlaying
 
 # returns the response given a sender, message, and channel
 def computeResponse(sender, message, channel, ogsender=None):
@@ -521,7 +545,6 @@ def computeResponse(sender, message, channel, ogsender=None):
     
     #Strip off any pre-pended data from bridge communications.
     if re.match('.+<.+\#\d+>.+', message) is not None:
-      print 'Match triggered.'
       message = message.split(' ',1)[1]
 
     splitmsg = message.split(' ')
@@ -575,7 +598,8 @@ def computeResponse(sender, message, channel, ogsender=None):
             subject = "" 
 
         subject = alias(subject)
-
+        
+        #Get Number of Message Sent
         if symbol == "``":
             usrstats = getStats(subject)
             if usrstats:
@@ -583,6 +607,7 @@ def computeResponse(sender, message, channel, ogsender=None):
             else:
                 return "%s is not a recorded user" % subject 
 
+        #Get User Quality
         if symbol == "**":
             usrstats = getStats(subject)
             usrkarma = getPoints(subject)
@@ -591,7 +616,8 @@ def computeResponse(sender, message, channel, ogsender=None):
                 return "%s has %.2f%% quality posts"  % (subject, usrquality)
             else:
                 return "%s has no stats or karma recorded" % subject
-
+        
+        #Get Karma Given By User
         if symbol == "$$":
             usrgener = getGenerosity(subject)
             if usrgener:
@@ -610,8 +636,6 @@ def computeResponse(sender, message, channel, ogsender=None):
             return "%s has %i karma" % (subject, getPoints(subject))
         else:
             # Utter stupidity here (other m sucks)
-            #if (message.lstrip().lower() == 'other m' or message.lstrip().lower() == 'metroid: other m') \
-            #    and netgain == 1:
             if (message.lower().find('other m') > -1 or message.lower().find('metroid: other m') > -1) and netgain == 1:
 		print message.lower() + " Calling Other M function."
                 global otherm
@@ -742,10 +766,10 @@ def computeResponse(sender, message, channel, ogsender=None):
         return "http://chiptuneswin.com/index"
 
     elif func == ".gbr" or func == ".geekbeatradio":
-        return getRadioInfo('http://208.113.129.170:8000/status-json.xsl')
+        return getRadioInfo('geekbeatradio','http://208.113.129.170:8000/status-json.xsl')
 
     elif func == ".fab" or func == ".fabinternational":
-        return getRadioInfo('http://184.154.43.106:8021/status-json.xsl')
+        return getRadioInfo('fabinternational','http://184.154.43.106:8021/status-json.xsl')
 
     elif func == ".meow":
         return "https://soundcloud.com/anamanaguchi/meow-1"
