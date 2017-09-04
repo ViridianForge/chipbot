@@ -576,7 +576,6 @@ def computeResponse(sender, message, channel, ogsender=None):
             if msg != []:
                 for m in msg:
                     mstr = m.strip()
-                    print mstr
                     if mstr != '--' and mstr != '++':
                         output.append(computeResponse(sender, mstr, channel))
         return output
@@ -586,7 +585,10 @@ def computeResponse(sender, message, channel, ogsender=None):
         symbol = message[-2:]
         message = message[:-2].rstrip().lstrip()
 
-        
+        #Test to see if the object of Karma is more than a single letter
+        if len(message) <= 1:
+            return
+
         # determine how many points to give/take
         netgain = int(symbol=="++") - int(symbol=="--")
         
