@@ -35,7 +35,7 @@ from pattern.web import *
 import re
 import time
 import random
-import mechanize 
+import mechanize
 from dfrotz_irc import FrotzParser
 from BeautifulSoup import BeautifulSoup
 
@@ -472,7 +472,6 @@ def resetalias(sender, realalias=None):
     
 
 def parseURL(url):
-    print url
     br = mechanize.Browser()
     try:
         res = br.open(url)
@@ -484,16 +483,17 @@ def parseURL(url):
         print "Failed at opening URL due to Encoding Reasons. \n URL was: " + url
         return
     try:
-        soup = BeautifulSoup(data)
+        soup = BeautifulSoup(data, convertEntities=BeautifulSoup.HTML_ENTITIES)
     except UnicodeEncodeError:
 	print "Failed at soupification. \n Data was: " + data
         return
+    
     title = soup.find('title')
     
     if title is None:
         return
     else:
-        return title.renderContents().decode('utf-8')
+        return title.renderContents().decode('utf-8').replace('\n', ' ')
 
 # returns text from radio output
 #Grabs Icecast JSON-Status xsl data, and looks for the title
