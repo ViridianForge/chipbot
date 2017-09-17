@@ -36,10 +36,11 @@ import re
 import time
 import random
 import mechanize
+import os.path
 from dfrotz_irc import FrotzParser
 from BeautifulSoup import BeautifulSoup
 
-parser = argparse.ArgumentParser(description="Bamboo argument parsing")
+parser = argparse.ArgumentParser(description="Chipbot argument parsing")
 parser.add_argument("-s", "--server", nargs='?', default="irc.na.esper.net")
 parser.add_argument("-p", "--port", nargs='?', default=6667, type=int)
 parser.add_argument("-n", "--nick", nargs='?', default="chipbot")
@@ -52,11 +53,12 @@ parser.add_argument("-z", "--scramblefile", nargs='?', default=".scrambles")
 parser.add_argument("-d", "--debug", action="store_true")
 parser.add_argument("-g", "--generousfile", nargs='?', default=".generous")
 parser.add_argument("-q", "--quotefile", nargs='?', default=".quotes")
+parser.add_argument("--runSilent", action="store_true", default=False)
 parser.add_argument("-u", "--userfile", nargs='?', default=".users")
 parser.add_argument("-m", "--modfile", nargs='?', default=".mods")
 parser.add_argument("-e", "--emotefile", nargs='?', default=".emotes")
 parser.add_argument("--aliasfile", nargs='?', default=".alias")
-parser.add_argument("-keyfile", nargs='?', default=".key")
+parser.add_argument("--keyfile", nargs='?', default=".key")
 parser.add_argument("-t", "--tls", action="store_true", default=False)
 parser.add_argument("--password", nargs='?')
 args = parser.parse_args(sys.argv[1:])
@@ -100,8 +102,31 @@ generous = loadData(args.generousfile)
 scrambleTracker = loadData(args.scramblefile)
 aliases = loadData(args.aliasfile)
 
+#Defining Silence Bamboo up here - so it can be used at bot load.
+def silenceBamboo():
+    global silentMode
+    silentMode = not silentMode
+    if(silentMode):
+        open('.silent', 'a').close()
+    else:
+        os.remove('.silent')
+    if silentMode:
+        return "Running in silent mode!"
+    else:
+        return "Silent mode deactivated"
+
+#Hack - try to load silentMode. No file, set to false
+if(os.path.isfile('.silent')):
+   silenceBamboo()
+
+if(args.runSilent):
+    #Bit of a hack here - make sure we're silencing Bamboo
+    #Just in case the file is set AND we ran the arg.
+    silentMode = False
+    silenceBamboo()
+    open('.silent','a').close()
+
 def loadStrings(filename):
-    print filename
     slist = []
     try:
         with open(filename) as f:
@@ -131,7 +156,6 @@ except IOError:
 # connect to the server
 s = socket.socket()
 if args.tls:
-    print "ssl"
     s = ssl.wrap_socket(s)
 
 s.connect((args.server, args.port))
@@ -326,14 +350,6 @@ def anonDo(message):
 def updateBamboo():
     exit(0)
 	
-def silenceBamboo():
-    global silentMode
-    silentMode = not silentMode
-    if silentMode:
-        return "Running in silent mode!"
-    else:
-        return "Silent mode deactivated"
-
 def searchGoogle(searchTerm, searchUrl):
     global googlekey
     g = Google(license='')
@@ -543,6 +559,9 @@ def getRadioInfo(station_name, url):
 def computeResponse(sender, message, channel, ogsender=None):
     global args
     
+    if silentMode and sender not in mods:
+        return
+    
     #Strip off any pre-pended data from bridge communications.
     if re.match('.+<.+\#\d+>.+', message) is not None:
       message = message.split(' ',1)[1]
@@ -553,9 +572,6 @@ def computeResponse(sender, message, channel, ogsender=None):
 
     if sender:
         setStats(sender)
-
-    if silentMode and sender not in mods:
-        return
     
     output = []
     messages = []
